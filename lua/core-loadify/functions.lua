@@ -27,41 +27,38 @@ local function GetName(path)
         return Loadify.LoadedAddonsDirNames[dir]
 end
 
-function Loadify.GetBasePath()
-        local info = debug_getinfo(3, "S")
-        if not info or not info.source then return false end
+-- replaced the hardcoded stack level with a stack walker
+local function FindCallerBasePath()
+        local level = 3 -- skip this function's own frame + the Loadify entry point that called us
 
-        local src = Normalize(info.source)
+        while true do
+                local info = debug_getinfo(level, "S")
+                if not info or not info.source then return false end
 
-        local split = string_Split(src, "/")
+                local src = Normalize(info.source)
 
-        if split[1] == BASE then
-                return true, split[1] .. "/" .. split[2] .. "/"
+                -- keep climbing past Loadify's own internal frames
+                if not src:match("^core%-loadify/") then
+                        local split = string_Split(src, "/")
+
+                        if split[1] == BASE then
+                                return true, split[1] .. "/" .. split[2] .. "/"
+                        end
+
+                        return false
+                end
+
+                level = level + 1
         end
-
-        return false
 end
 
-function Loadify.Test()
-        local info = debug_getinfo(3, "S")
-        if not info or not info.source then return false end
-
-        return info.source
+function Loadify.GetBasePath()
+        return FindCallerBasePath()
 end
 
 function Loadify.IsLoadify()
-        local info = debug_getinfo(3, "S")
-        if not info or not info.source then return false end
-
-        local src = Normalize(info.source)
-
-        local split = string_Split(src, "/")
-
-        if split[1] == BASE then
-                return true
-        end
-
-        return false
+        local IsLoadify = FindCallerBasePath()
+        return IsLoadify
 end
 
 function Loadify.Include(path)
@@ -89,21 +86,7 @@ function Loadify.FindFiles(path)
 end
 
 function Loadify.GetCurrentAddon()
-        local IsLoadify = false
-        local BasePath = ""
-
-        local info = debug_getinfo(3, "S")
-
-        if info ~= nil and info.source ~= nil then
-                local src = Normalize(info.source)
-
-                local split = string_Split(src, "/")
-
-                if split[1] == BASE then
-                        IsLoadify = true
-                        BasePath = split[1] .. "/" .. split[2] .. "/"
-                end
-        end
+        local IsLoadify, BasePath = FindCallerBasePath()
 
         if IsLoadify then
                 local AddonName = GetName(BasePath)

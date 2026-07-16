@@ -119,7 +119,39 @@ function Loadify.RegisterEntityFromFile(Path)
         end
 end
 
+function Loadify.RegisterWeaponFromFile(Path)
+        local IsLoadify, BasePath = Loadify.GetBasePath()
+
+        MSG.Info(BasePath .. Path)
+
+        if IsLoadify then
+                MSG.Info("Loading weapon [" .. Path .. "]...")
+
+                do
+                        ENT, CLASSNAME = {}, nil
+
+                        include(BasePath .. Path)
+
+                        weapons.Register(ENT, CLASSNAME)
+
+                        if CLASSNAME ~= nil then
+
+                        elseif CLASSNAME ~= "base_entity" then
+                                MSG.Error("Weapon [" .. Path .. "] tried to override base_entity")
+                        else
+                                MSG.Error("Weapon [" .. Path .. "] does not have a ClassName defined.")
+                        end
+                        _G.ENT, _G.CLASSNAME = nil, nil
+                end
+        end
+end
+
 --- todo
 function Loadify.RegisterEntitiesFromDir(Path)
+
+end
+
+--- todo
+function Loadify.RegisterWeaponsFromDir(Path)
 
 end

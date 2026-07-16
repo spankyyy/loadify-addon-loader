@@ -28,7 +28,7 @@ local function GetName(path)
 end
 
 -- replaced the hardcoded stack level with a stack walker
-local function Loadify.GetBasePath()
+function Loadify.GetBasePath()
         local level = 3 -- skip this function's own frame + the Loadify entry point that called us
 
         while true do

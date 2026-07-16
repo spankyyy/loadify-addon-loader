@@ -147,11 +147,23 @@ function Loadify.RegisterWeaponFromFile(Path)
 end
 
 --- todo
-function Loadify.RegisterEntitiesFromDir(Path)
+function Loadify.RegisterEntitiesFromDir(BasePath, Path)
+        local Files = Loadify.FindFiles(BasePath .. Path)
 
+        if not Files then return end
+
+        for _, FileName in pairs(Files) do
+                Loadify.RegisterEntityFromFile(BasePath .. FileName)
+        end
 end
 
 --- todo
 function Loadify.RegisterWeaponsFromDir(Path)
+        local Files = Loadify.FindFiles(BasePath .. Path)
 
+        if not Files then return end
+
+        for _, FileName in pairs(Files) do
+                Loadify.RegisterWeaponFromFile(BasePath .. FileName)
+        end
 end

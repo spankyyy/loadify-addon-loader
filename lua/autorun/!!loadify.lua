@@ -13,14 +13,17 @@ local net_Broadcast = net.Broadcast
 local hook_Add = hook.Add
 local net_Receive = net.Receive
 
+--------------------------------------------------------------------------------------------------------------------------------
+
 AddCSLuaFile()
 
 Loadify = {}
-
-local MSG = include("core-loadify/message.lua")
-Loadify.MSG = MSG
+Loadify.MSG = include("core-loadify/message.lua")
+local MSG = Loadify.MSG
 
 include("core-loadify/functions.lua")
+
+--------------------------------------------------------------------------------------------------------------------------------
 
 Loadify.LoadedAddons = {}
 local loadedAddons = Loadify.LoadedAddons
@@ -31,11 +34,10 @@ local queue = {}
 
 local STRICT_DEPENDENCY = true
 local STRICT_VERSION = true
-
 local LOAD_ENABLED = true
 
--- Parses "myaddon>=1.0" into { name = "myaddon", op = ">=", version = "1.0" }
--- If no operator/version, returns { name = "myaddon", op = nil, version = nil }
+--------------------------------------------------------------------------------------------------------------------------------
+
 local function parseDependency(dep)
         local name, op, version = dep:match("^([%w_%-%.]+)([><=!]+)(.+)$")
         if name and op and version then
@@ -44,7 +46,6 @@ local function parseDependency(dep)
         return { name = dep, op = nil, version = nil }
 end
 
--- Converts "1.2.3" into a table of numbers { 1, 2, 3 } for comparison
 local function parseVersion(v)
         local parts = {}
         for part in v:gmatch("[^%.]+") do
@@ -53,7 +54,6 @@ local function parseVersion(v)
         return parts
 end
 
--- Returns -1, 0, or 1 (a < b, a == b, a > b)
 local function compareVersions(a, b)
         local pa = parseVersion(a)
         local pb = parseVersion(b)
@@ -67,8 +67,6 @@ local function compareVersions(a, b)
         return 0
 end
 
--- Returns true if `actual` satisfies `op` `required`
--- e.g. satisfiesVersion("1.2.0", ">=", "1.0.0") -> true
 local function satisfiesVersion(actual, op, required)
         local cmp = compareVersions(actual, required)
         if op == ">" then return cmp > 0 end
@@ -86,9 +84,6 @@ local function verifyManifest(info)
         return true
 end
 
--- Checks whether every dependency of `info` is loaded and version-satisfied.
--- Assumes the caller has already verified info.dependencies is non-empty.
--- Returns false (and logs) on the first unmet or version-mismatched dependency.
 local function checkDependencies(info, name)
         for _, depString in pairs(info.dependencies) do
                 local dep = parseDependency(depString)
@@ -111,9 +106,6 @@ local function checkDependencies(info, name)
         return true
 end
 
--- Returns the list of human-readable reasons `blockedInfo` can't load
--- (missing dependency, or dependency loaded but wrong version). Empty
--- list means this addon isn't actually the problem.
 local function getMissingDependencies(blockedInfo)
         local missing = {}
 
@@ -138,8 +130,6 @@ local function getMissingDependencies(blockedInfo)
         return missing
 end
 
--- Called once the queue has stopped making progress; logs why each
--- remaining addon is stuck so the deadlock is actually diagnosable.
 local function reportDeadlockedQueue(stuckQueue)
         for _, blocked in ipairs(stuckQueue) do
                 local missing = getMissingDependencies(blocked.info)
@@ -216,8 +206,6 @@ local function Load()
                         table_remove(queue, 1)
                         remaining = remaining - 1
 
-                        -- Store the addon's version alongside its loaded state so
-                        -- dependents can check version constraints against it
                         loadedAddons[name] = info
 
                         include(path .. "/main.lua")
@@ -226,6 +214,8 @@ local function Load()
                 end
         end
 end
+
+--------------------------------------------------------------------------------------------------------------------------------
 
 if SERVER then
         util.AddNetworkString("loadify_lua_reload")

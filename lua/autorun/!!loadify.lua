@@ -86,6 +86,73 @@ local function verifyManifest(info)
         return true
 end
 
+-- Checks whether every dependency of `info` is loaded and version-satisfied.
+-- Assumes the caller has already verified info.dependencies is non-empty.
+-- Returns false (and logs) on the first unmet or version-mismatched dependency.
+local function checkDependencies(info, name)
+        for _, depString in pairs(info.dependencies) do
+                local dep = parseDependency(depString)
+
+                if not loadedAddons[dep.name] then
+                        return false
+                end
+
+                if STRICT_VERSION and dep.op and dep.version then
+                        local loadedVersion = loadedAddons[dep.name].version
+                        if not satisfiesVersion(loadedVersion, dep.op, dep.version) then
+                                MSG.Error(string.format(
+                                        "Addon '%s' requires '%s%s%s' but loaded version is '%s'",
+                                        name, dep.name, dep.op, dep.version, loadedVersion))
+                                return false
+                        end
+                end
+        end
+
+        return true
+end
+
+-- Returns the list of human-readable reasons `blockedInfo` can't load
+-- (missing dependency, or dependency loaded but wrong version). Empty
+-- list means this addon isn't actually the problem.
+local function getMissingDependencies(blockedInfo)
+        local missing = {}
+
+        if blockedInfo == nil or blockedInfo.dependencies == nil or #blockedInfo.dependencies == 0 then
+                return missing
+        end
+
+        for _, depString in pairs(blockedInfo.dependencies) do
+                local dep = parseDependency(depString)
+
+                if not loadedAddons[dep.name] then
+                        table_insert(missing, depString) -- include the full string for clarity
+                elseif STRICT_VERSION and dep.op and dep.version then
+                        local loadedVersion = loadedAddons[dep.name].version
+                        if not satisfiesVersion(loadedVersion, dep.op, dep.version) then
+                                table_insert(missing, string.format(
+                                        "%s%s%s (got %s)", dep.name, dep.op, dep.version, loadedVersion))
+                        end
+                end
+        end
+
+        return missing
+end
+
+-- Called once the queue has stopped making progress; logs why each
+-- remaining addon is stuck so the deadlock is actually diagnosable.
+local function reportDeadlockedQueue(stuckQueue)
+        for _, blocked in ipairs(stuckQueue) do
+                local missing = getMissingDependencies(blocked.info)
+
+                if #missing > 0 then
+                        MSG.Error(string.format(
+                                "Addon '%s' has unresolvable dependencies: %s",
+                                blocked.info.name or "(unknown)",
+                                table.concat(missing, ", ")))
+                end
+        end
+end
+
 local function Load()
         if not LOAD_ENABLED then return end
 
@@ -128,26 +195,7 @@ local function Load()
                 local dependenciesLoaded = true
 
                 if STRICT_DEPENDENCY and info.dependencies and #info.dependencies > 0 then
-                        for _, depString in pairs(info.dependencies) do
-                                local dep = parseDependency(depString)
-
-                                if not loadedAddons[dep.name] then
-                                        dependenciesLoaded = false
-                                        break
-                                end
-
-                                -- Dependency is loaded; now check version constraint if present
-                                if STRICT_VERSION and dep.op and dep.version then
-                                        local loadedVersion = loadedAddons[dep.name].version
-                                        if not satisfiesVersion(loadedVersion, dep.op, dep.version) then
-                                                MSG.Error(string.format(
-                                                        "Addon '%s' requires '%s%s%s' but loaded version is '%s'",
-                                                        name, dep.name, dep.op, dep.version, loadedVersion))
-                                                dependenciesLoaded = false
-                                                break
-                                        end
-                                end
-                        end
+                        dependenciesLoaded = checkDependencies(info, name)
 
                         if not dependenciesLoaded then
                                 moves = moves + 1
@@ -157,35 +205,7 @@ local function Load()
                         end
 
                         if moves >= remaining then
-                                for _, blocked in ipairs(queue) do
-                                        local blockedInfo = blocked.info
-                                        if blockedInfo == nil or blockedInfo.dependencies == nil or #blockedInfo.dependencies == 0 then
-                                                continue
-                                        end
-
-                                        local missing = {}
-                                        for _, depString in pairs(blockedInfo.dependencies) do
-                                                local dep = parseDependency(depString)
-
-                                                if not loadedAddons[dep.name] then
-                                                        table_insert(missing, depString) -- include the full string for clarity
-                                                elseif STRICT_VERSION and dep.op and dep.version then
-                                                        local loadedVersion = loadedAddons[dep.name].version
-                                                        if not satisfiesVersion(loadedVersion, dep.op, dep.version) then
-                                                                table_insert(missing, string.format(
-                                                                        "%s%s%s (got %s)", dep.name, dep.op, dep.version, loadedVersion))
-                                                        end
-                                                end
-                                        end
-
-                                        if #missing > 0 then
-                                                MSG.Error(string.format(
-                                                        "Addon '%s' has unresolvable dependencies: %s",
-                                                        blockedInfo.name or "(unknown)",
-                                                        table.concat(missing, ", ")))
-                                        end
-                                end
-
+                                reportDeadlockedQueue(queue)
                                 break
                         end
                 end

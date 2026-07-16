@@ -10,45 +10,45 @@ AddCSLuaFile()
 local MSG = Loadify.MSG
 
 local BASE = "loadify"
-local function Normalize(path)
-        path = path:gsub("^@", "")
+local function Normalize(Path)
+        Path = Path:gsub("^@", "")
 
         -- strip "addons/<name>/lua/"
-        path = path:gsub("^addons/[^/]+/lua/", "")
+        Path = Path:gsub("^addons/[^/]+/lua/", "")
 
         -- strip "lua/"
-        path = path:gsub("^lua/", "")
+        Path = Path:gsub("^lua/", "")
 
-        return path
+        return Path
 end
 
-local function GetName(path)
-        local dir = path:gsub("^loadify/", ""):gsub("/.*$", "")
-        return Loadify.LoadedAddonsDirNames[dir]
+local function GetName(Path)
+        local Dir = Path:gsub("^loadify/", ""):gsub("/.*$", "")
+        return Loadify.LoadedAddonsDirNames[Dir]
 end
 
 -- replaced the hardcoded stack level with a stack walker
 function Loadify.GetBasePath()
-        local level = 3 -- skip this function's own frame + the Loadify entry point that called us
+        local Level = 3 -- skip this function's own frame + the Loadify entry point that called us
 
         while true do
-                local info = debug_getinfo(level, "S")
-                if not info or not info.source then return false end
+                local Info = debug_getinfo(Level, "S")
+                if not Info or not Info.source then return false end
 
-                local src = Normalize(info.source)
+                local Src = Normalize(Info.source)
 
                 -- keep climbing past Loadify's own internal frames
-                if not src:match("^core%-loadify/") then
-                        local split = string_Split(src, "/")
+                if not Src:match("^core%-loadify/") then
+                        local Split = string_Split(Src, "/")
 
-                        if split[1] == BASE then
-                                return true, split[1] .. "/" .. split[2] .. "/"
+                        if Split[1] == BASE then
+                                return true, Split[1] .. "/" .. Split[2] .. "/"
                         end
 
                         return false
                 end
 
-                level = level + 1
+                Level = Level + 1
         end
 end
 
@@ -57,11 +57,11 @@ function Loadify.IsLoadify()
         return IsLoadify
 end
 
-function Loadify.Include(path)
+function Loadify.Include(Path)
         local IsLoadify, BasePath = Loadify.GetBasePath()
 
         if IsLoadify then
-                return include(BasePath .. path)
+                return include(BasePath .. Path)
         end
 
         ErrorNoHalt("LOADIFY - cannot include file outside of a loadify addon!")
@@ -69,11 +69,11 @@ function Loadify.Include(path)
         return nil
 end
 
-function Loadify.FindFiles(path)
+function Loadify.FindFiles(Path)
         local IsLoadify, BasePath = Loadify.GetBasePath()
 
         if IsLoadify then
-                return file_Find(BasePath .. path, "LUA")
+                return file_Find(BasePath .. Path, "LUA")
         end
 
         ErrorNoHalt("LOADIFY - cannot find files outside of a loadify addon!")

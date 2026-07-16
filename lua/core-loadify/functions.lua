@@ -28,7 +28,7 @@ local function GetName(path)
 end
 
 -- replaced the hardcoded stack level with a stack walker
-local function FindCallerBasePath()
+local function Loadify.GetBasePath()
         local level = 3 -- skip this function's own frame + the Loadify entry point that called us
 
         while true do
@@ -52,12 +52,8 @@ local function FindCallerBasePath()
         end
 end
 
-function Loadify.GetBasePath()
-        return FindCallerBasePath()
-end
-
 function Loadify.IsLoadify()
-        local IsLoadify = FindCallerBasePath()
+        local IsLoadify = Loadify.GetBasePath()
         return IsLoadify
 end
 
@@ -86,7 +82,7 @@ function Loadify.FindFiles(path)
 end
 
 function Loadify.GetCurrentAddon()
-        local IsLoadify, BasePath = FindCallerBasePath()
+        local IsLoadify, BasePath = Loadify.GetBasePath()
 
         if IsLoadify then
                 local AddonName = GetName(BasePath)
@@ -96,7 +92,6 @@ function Loadify.GetCurrentAddon()
         ErrorNoHalt("LOADIFY - cannot get current addon outside of a loadify addon!")
 end
 
---- todo
 function Loadify.RegisterEntityFromFile(Path)
         local IsLoadify, BasePath = Loadify.GetBasePath()
 

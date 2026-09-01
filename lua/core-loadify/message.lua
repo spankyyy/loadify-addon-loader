@@ -28,7 +28,7 @@ local MSGLEVEL_COLORS = {
 
 local NeutralColor = Color(255, 255, 255)
 local TitleColor = Color(0, 255, 0)
-local RealmColor = SERVER and Color(128, 240, 255) or Color(255, 240, 128)
+local RealmColor = SERVER and Color(0, 128, 255) or Color(255, 128, 0)
 local Realm = SERVER and "Server" or "Client"
 
 --- Format and print a coloured message to the console.

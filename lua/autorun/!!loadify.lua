@@ -33,49 +33,9 @@ local loadedAddonsDirNames = Loadify.LoadedAddonsDirNames
 local queue = {}
 
 local STRICT_DEPENDENCY = true
-local STRICT_VERSION = true
 local LOAD_ENABLED = true
 
 --------------------------------------------------------------------------------------------------------------------------------
-
-local function parseDependency(dep)
-        local name, op, version = dep:match("^([%w_%-%.]+)([><=!]+)(.+)$")
-        if name and op and version then
-                return { name = name, op = op, version = version }
-        end
-        return { name = dep, op = nil, version = nil }
-end
-
-local function parseVersion(v)
-        local parts = {}
-        for part in v:gmatch("[^%.]+") do
-                table_insert(parts, tonumber(part) or 0)
-        end
-        return parts
-end
-
-local function compareVersions(a, b)
-        local pa = parseVersion(a)
-        local pb = parseVersion(b)
-        local len = math.max(#pa, #pb)
-        for i = 1, len do
-                local va = pa[i] or 0
-                local vb = pb[i] or 0
-                if va < vb then return -1 end
-                if va > vb then return 1 end
-        end
-        return 0
-end
-
-local function satisfiesVersion(actual, op, required)
-        local cmp = compareVersions(actual, required)
-        if op == ">" then return cmp > 0 end
-        if op == "<" then return cmp < 0 end
-        if op == ">=" then return cmp >= 0 end
-        if op == "<=" then return cmp <= 0 end
-        if op == "==" then return cmp == 0 end
-        return false
-end
 
 local function verifyManifest(info)
         if not info then return false end
@@ -84,22 +44,10 @@ local function verifyManifest(info)
         return true
 end
 
-local function checkDependencies(info, name)
-        for _, depString in pairs(info.dependencies) do
-                local dep = parseDependency(depString)
-
-                if not loadedAddons[dep.name] then
+local function checkDependencies(info)
+        for _, dependency in pairs(info.dependencies) do
+                if not loadedAddons[dependency] then
                         return false
-                end
-
-                if STRICT_VERSION and dep.op and dep.version then
-                        local loadedVersion = loadedAddons[dep.name].version
-                        if not satisfiesVersion(loadedVersion, dep.op, dep.version) then
-                                MSG.Error(string.format(
-                                        "Addon '%s' requires '%s%s%s' but loaded version is '%s'",
-                                        name, dep.name, dep.op, dep.version, loadedVersion))
-                                return false
-                        end
                 end
         end
 
@@ -113,24 +61,16 @@ local function getMissingDependencies(blockedInfo)
                 return missing
         end
 
-        for _, depString in pairs(blockedInfo.dependencies) do
-                local dep = parseDependency(depString)
-
-                if not loadedAddons[dep.name] then
-                        table_insert(missing, depString) -- include the full string for clarity
-                elseif STRICT_VERSION and dep.op and dep.version then
-                        local loadedVersion = loadedAddons[dep.name].version
-                        if not satisfiesVersion(loadedVersion, dep.op, dep.version) then
-                                table_insert(missing, string.format(
-                                        "%s%s%s (got %s)", dep.name, dep.op, dep.version, loadedVersion))
-                        end
+        for _, dependency in pairs(blockedInfo.dependencies) do
+                if not loadedAddons[dependency] then
+                        table_insert(missing, dependency)
                 end
         end
 
         return missing
 end
 
-local function reportDeadlockedQueue(stuckQueue)
+local function reportDeadlock(stuckQueue)
         for _, blocked in ipairs(stuckQueue) do
                 local missing = getMissingDependencies(blocked.info)
 
@@ -176,7 +116,7 @@ local function Load()
         local moves = 0
         local remaining = #queue
 
-
+        MSG.Info("Loading:")
         while remaining > 0 do
                 local addon = queue[1]
                 local info, path = addon.info, addon.path
@@ -185,7 +125,7 @@ local function Load()
                 local dependenciesLoaded = true
 
                 if STRICT_DEPENDENCY and info.dependencies and #info.dependencies > 0 then
-                        dependenciesLoaded = checkDependencies(info, name)
+                        dependenciesLoaded = checkDependencies(info)
 
                         if not dependenciesLoaded then
                                 moves = moves + 1
@@ -195,7 +135,7 @@ local function Load()
                         end
 
                         if moves >= remaining then
-                                reportDeadlockedQueue(queue)
+                                reportDeadlock(queue)
                                 break
                         end
                 end

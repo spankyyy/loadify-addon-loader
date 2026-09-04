@@ -8,7 +8,7 @@ return {
         contact = "",
         homepage = "gilbing.com",
         dependencies = {
-                "exampleaddon2"
+
         },
         description = "Example addon to showcase the thing"
 }

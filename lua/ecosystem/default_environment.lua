@@ -1,5 +1,29 @@
 AddCSLuaFile()
 
+local ResolvePath = include("ecosystem/util/path_resolver.lua")
+
+local function ReadFile(Path, Caller)
+        local SourceCode = file.Read(Path, "LUA")
+        if SourceCode == nil then
+                error(string.format("%s could not read '%s'", Caller, Path), 2)
+        end
+
+        return SourceCode
+end
+
+local function SendFile(Path, CheckExists)
+        if not CheckExists then
+                AddCSLuaFile(Path)
+                return
+        end
+
+        if not file.Exists(Path, "LUA") then
+                error(string.format("AddCSLuaFile could not find '%s'", Path), 2)
+        end
+
+        AddCSLuaFile(Path)
+end
+
 return function(Container)
         local ENV = {}
         ENV.builtin = {}
@@ -9,25 +33,29 @@ return function(Container)
 
         function ENV.AddCSLuaFile(path)
                 if path == nil then
-                        AddCSLuaFile(Container.CurrentFile)
+                        SendFile(Container.CurrentFile, false)
                         return
                 end
-                AddCSLuaFile(Container.BasePath .. "/" .. path)
+
+                if type(path) ~= "string" or path == "" then
+                        error("AddCSLuaFile expected a non-empty path", 2)
+                end
+
+                SendFile(ResolvePath(path, Container.CurrentFile, Container.BasePath), true)
         end
 
         function ENV.include(path)
-                local AbsoluteParent = Container.AbsoluteParent
+                if type(path) ~= "string" or path == "" then
+                        error("include expected a non-empty path", 2)
+                end
 
-                local OldCurrentFile = AbsoluteParent.CurrentFile
-                AbsoluteParent.CurrentFile = Container.BasePath .. "/" .. path
+                local CurrentFile = ResolvePath(path, Container.CurrentFile, Container.BasePath)
 
-                local SourceCode = file.Read(AbsoluteParent.CurrentFile, "LUA")
+                local SourceCode = ReadFile(CurrentFile, "include")
 
-                local Child = Container:CreateChild(path, SourceCode)
+                local Child = Container:CreateChild(CurrentFile, SourceCode)
 
                 local Return = { Child:Process():Compile():Run() }
-
-                AbsoluteParent.CurrentFile = OldCurrentFile
 
                 return unpack(Return)
         end

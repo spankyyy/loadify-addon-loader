@@ -1,6 +1,5 @@
 AddCSLuaFile()
 
---Loadify.Include("example_folder/example_file.lua")
+include("$ABSOLUTE/example_folder/example_file.lua")
 
-
-print("hello from example addon 1")
+print("hello from main.lua")

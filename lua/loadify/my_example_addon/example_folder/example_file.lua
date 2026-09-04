@@ -1,7 +1,3 @@
 AddCSLuaFile()
 
-local function Gilb()
-
-end
-
-Gilb()
+print("hello from example_file.lua")

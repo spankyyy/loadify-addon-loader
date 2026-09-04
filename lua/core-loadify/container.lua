@@ -95,7 +95,12 @@ end
 
 function LuaContainer:Run()
         -- maybe pcall this if needed
-        return self.CompiledFunction()
+        local Parent = self.AbsoluteParent
+        local OldCurrentFile = Parent.CurrentFile
+        Parent.CurrentFile = self.CurrentFile
+        local Return = { self.CompiledFunction() }
+        Parent.CurrentFile = OldCurrentFile
+        return unpack(Return)
 end
 
 function LuaContainer:CreateChild(Name, Code)
@@ -107,6 +112,8 @@ function LuaContainer:CreateChild(Name, Code)
         Child:SetSourceCode(Code)
 
         Child.AbsoluteParent = self.AbsoluteParent
+        Child.BasePath = self.BasePath
+        Child.CurrentFile = Name
 
         return Child
 end

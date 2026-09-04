@@ -56,37 +56,19 @@ end
 --- Log an info-level message.
 --- @param ... any
 function Message.Info(...)
-        local AddonName = "Loadify"
-        if Loadify.IsLoadify() then
-                local _, Addon = Loadify.GetCurrentAddon()
-                AddonName = Addon.title
-        end
-
-        ThrowMessage(MSGLEVEL.INFO, AddonName, ...)
+        ThrowMessage(MSGLEVEL.INFO, "Loadify", ...)
 end
 
 --- Log a warning-level message.
 --- @param ... any
 function Message.Warn(...)
-        local AddonName = "Loadify"
-        if Loadify.IsLoadify() then
-                local _, Addon = Loadify.GetCurrentAddon()
-                AddonName = Addon.title
-        end
-
-        ThrowMessage(MSGLEVEL.WARN, AddonName, ...)
+        ThrowMessage(MSGLEVEL.WARN, "Loadify", ...)
 end
 
 --- Log an error-level message.
 --- @param ... any
 function Message.Error(...)
-        local AddonName = "Loadify"
-        if Loadify.IsLoadify() then
-                local _, Addon = Loadify.GetCurrentAddon()
-                AddonName = Addon.title
-        end
-
-        ThrowMessage(MSGLEVEL.ERROR, AddonName, ...)
+        ThrowMessage(MSGLEVEL.ERROR, "Loadify", ...)
 end
 
 return Message

@@ -21,8 +21,6 @@ Loadify = {}
 Loadify.MSG = include("core-loadify/message.lua")
 local MSG = Loadify.MSG
 
-include("core-loadify/functions.lua")
-
 --------------------------------------------------------------------------------------------------------------------------------
 
 Loadify.LoadedAddons = {}
@@ -30,6 +28,9 @@ Loadify.LoadedAddonsDirNames = {}
 
 Loadify.LuaContainer = include("core-loadify/container.lua")
 Loadify.Ecosystem = {
+        Preprocessors = {
+                dofile = include("ecosystem/preprocessors/dofile.lua")
+        },
         ENV = {
                 Default = include("ecosystem/default_environment.lua")
         }
@@ -97,16 +98,23 @@ local function reportDeadlock(stuckQueue)
 end
 
 local function loadAddon(basePath, path)
-        -- to be replaced by containerized addons
-        --include(path)
-
         local SourceCode = file.Read(basePath .. path, "LUA")
+        if SourceCode == nil then
+                MSG.Error(string.format("Cannot load file: '%s' is missing.", basePath .. path))
+                return nil
+        end
 
         local AddonContainer = LuaContainer {}
         local ENV = table.Copy(Loadify.Ecosystem.ENV.Default(AddonContainer))
 
         AddonContainer.BasePath = basePath
         AddonContainer.CurrentFile = basePath .. path
+        AddonContainer:SetName(AddonContainer.CurrentFile)
+
+        for _, Preprocessor in pairs(Loadify.Ecosystem.Preprocessors) do
+                AddonContainer:AddProcessor(Preprocessor)
+        end
+
         AddonContainer
             :SetEnvironment(ENV)
             :SetSourceCode(SourceCode)
@@ -186,11 +194,15 @@ local function Load()
         end
 
         print()
-        MSG.Info("Loading:")
+        MSG.Info(string.format("Loading addons (%i)", #sortedAddons))
+
+        local AddonNum, Index = #sortedAddons, 1
         for _, addon in pairs(sortedAddons) do
-                MSG.Info(string.format("Loading addon '%s'", addon.info.name))
+                MSG.Info(string.format("Loading addon '%s' (%i/%i)", addon.info.name, Index, AddonNum))
 
                 loadAddon(addon.path, "/main.lua")
+
+                Index = Index + 1
         end
 end
 

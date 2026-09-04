@@ -1,3 +1,8 @@
 AddCSLuaFile()
 
-Loadify.Include("example_folder/example_file.lua")
+local Inc = include("example_folder/example_file.lua")
+
+
+print(Inc)
+
+AddCSLuaFile()

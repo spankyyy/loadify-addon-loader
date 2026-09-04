@@ -1,7 +1,5 @@
 AddCSLuaFile()
 
-local function Gilb()
+print("hello from example file")
 
-end
-
-Gilb()
+return "hello this is returned from include!"

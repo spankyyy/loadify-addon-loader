@@ -26,14 +26,27 @@ include("core-loadify/functions.lua")
 --------------------------------------------------------------------------------------------------------------------------------
 
 Loadify.LoadedAddons = {}
-local loadedAddons = Loadify.LoadedAddons
 Loadify.LoadedAddonsDirNames = {}
+
+Loadify.LuaContainer = include("core-loadify/container.lua")
+Loadify.Ecosystem = {
+        ENV = {
+                Default = include("ecosystem/default_environment.lua")
+        }
+}
+
+local loadedAddons = Loadify.LoadedAddons
 local loadedAddonsDirNames = Loadify.LoadedAddonsDirNames
 
-local queue = {}
+local LuaContainer = Loadify.LuaContainer
 
-local STRICT_DEPENDENCY = true
+local queue = {}
+local sortedAddonsName = {}
+local sortedAddons = {}
+
 local LOAD_ENABLED = true
+local STRICT_DEPENDENCY = true
+
 
 --------------------------------------------------------------------------------------------------------------------------------
 
@@ -46,7 +59,7 @@ end
 
 local function checkDependencies(info)
         for _, dependency in pairs(info.dependencies) do
-                if not loadedAddons[dependency] then
+                if not sortedAddonsName[dependency] then
                         return false
                 end
         end
@@ -62,7 +75,7 @@ local function getMissingDependencies(blockedInfo)
         end
 
         for _, dependency in pairs(blockedInfo.dependencies) do
-                if not loadedAddons[dependency] then
+                if not sortedAddonsName[dependency] then
                         table_insert(missing, dependency)
                 end
         end
@@ -81,6 +94,27 @@ local function reportDeadlock(stuckQueue)
                                 table.concat(missing, ", ")))
                 end
         end
+end
+
+local function loadAddon(basePath, path)
+        -- to be replaced by containerized addons
+        --include(path)
+
+        local SourceCode = file.Read(basePath .. path, "LUA")
+
+        local AddonContainer = LuaContainer {}
+        local ENV = table.Copy(Loadify.Ecosystem.ENV.Default(AddonContainer))
+
+        AddonContainer.BasePath = basePath
+        AddonContainer.CurrentFile = basePath .. path
+        AddonContainer
+            :SetEnvironment(ENV)
+            :SetSourceCode(SourceCode)
+            :Process()
+            :Compile()
+            :Run()
+
+        return nil
 end
 
 local function Load()
@@ -116,10 +150,10 @@ local function Load()
         local moves = 0
         local remaining = #queue
 
-        MSG.Info("Loading:")
+        -- sort addons based on depencencies
         while remaining > 0 do
                 local addon = queue[1]
-                local info, path = addon.info, addon.path
+                local info = addon.info
                 local name = info.name
 
                 local dependenciesLoaded = true
@@ -141,17 +175,22 @@ local function Load()
                 end
 
                 if dependenciesLoaded then
-                        MSG.Info(string.format("Loading addon '%s'", name))
-
                         table_remove(queue, 1)
                         remaining = remaining - 1
 
-                        loadedAddons[name] = info
 
-                        include(path .. "/main.lua")
+                        sortedAddonsName[addon.info.name] = addon
 
-                        print()
+                        table.insert(sortedAddons, addon)
                 end
+        end
+
+        print()
+        MSG.Info("Loading:")
+        for _, addon in pairs(sortedAddons) do
+                MSG.Info(string.format("Loading addon '%s'", addon.info.name))
+
+                loadAddon(addon.path, "/main.lua")
         end
 end
 

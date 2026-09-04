@@ -1,6 +1,6 @@
 AddCSLuaFile()
 
-local Class = include("lua/core-loadify/class.lua")
+local Class = include("core-loadify/class.lua")
 local LuaContainer = Class:Extend("LuaContainer")
 
 function LuaContainer:Initialize(_)
@@ -10,6 +10,7 @@ function LuaContainer:Initialize(_)
         self.Code = nil
         self.ENV = {}
         self.Processors = {}
+        self.AbsoluteParent = self
 end
 
 function LuaContainer:SetName(Name)
@@ -93,7 +94,8 @@ function LuaContainer:GetCode()
 end
 
 function LuaContainer:Run()
-        local ok, error = pcall(self.CompiledFunction)
+        -- maybe pcall this if needed
+        return self.CompiledFunction()
 end
 
 function LuaContainer:CreateChild(Name, Code)
@@ -103,6 +105,8 @@ function LuaContainer:CreateChild(Name, Code)
         Child:SetEnvironment(self:GetEnvironment())
         Child:SetProcessors(self:GetProcessors())
         Child:SetSourceCode(Code)
+
+        Child.AbsoluteParent = self.AbsoluteParent
 
         return Child
 end

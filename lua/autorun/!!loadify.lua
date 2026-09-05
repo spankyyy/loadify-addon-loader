@@ -25,14 +25,15 @@ local MSG = Loadify.MSG
 
 Loadify.LoadedAddons = {}
 Loadify.LoadedAddonsDirNames = {}
+Loadify.AddonDirectory = "loadify/"
 
 Loadify.LuaContainer = include("core-loadify/container.lua")
 Loadify.Ecosystem = {
         Preprocessors = {
-                dofile = include("ecosystem/preprocessors/dofile.lua")
+                include_static = "ecosystem/preprocessors/dofile.lua"
         },
         ENV = {
-                Default = include("ecosystem/default_environment.lua")
+                Default = "ecosystem/default_environment.lua"
         }
 }
 
@@ -105,13 +106,16 @@ local function loadAddon(basePath, path)
         end
 
         local AddonContainer = LuaContainer {}
-        local ENV = table.Copy(Loadify.Ecosystem.ENV.Default(AddonContainer))
+        local DefaultEnv = include(Loadify.Ecosystem.ENV.Default)
+        local ENV = table.Copy(DefaultEnv(AddonContainer))
 
         AddonContainer.BasePath = basePath
         AddonContainer.CurrentFile = basePath .. path
         AddonContainer:SetName(AddonContainer.CurrentFile)
 
-        for _, Preprocessor in pairs(Loadify.Ecosystem.Preprocessors) do
+        for _, PreprocessorPath in pairs(Loadify.Ecosystem.Preprocessors) do
+                Preprocessor = include(PreprocessorPath)
+
                 AddonContainer:AddProcessor(Preprocessor)
         end
 
@@ -128,10 +132,10 @@ end
 local function Load()
         if not LOAD_ENABLED then return end
 
-        local _, directories = file_Find("loadify/*", "LUA")
+        local _, directories = file_Find(Loadify.AddonDirectory .. "*", "LUA")
 
         for _, dir in ipairs(directories) do
-                local path = "loadify/" .. dir
+                local path = Loadify.AddonDirectory .. dir
 
                 if not file_Exists(path .. "/manifest.lua", "LUA") then
                         MSG.Warn(string.format("Addon '%s' is missing manifest.lua", dir))

@@ -1,5 +1,6 @@
 AddCSLuaFile()
 
+local RequireCache = {}
 local ResolvePath = include("ecosystem/util/path_resolver.lua")
 
 local function ReadFile(Path, Caller)
@@ -9,6 +10,12 @@ local function ReadFile(Path, Caller)
         end
 
         return SourceCode
+end
+
+local function RunFile(Container, Path, SourceCode)
+        local Child = Container:CreateChild(Path, SourceCode)
+        local Return = { Child:Process():Compile():Run() }
+        return unpack(Return)
 end
 
 local function SendFile(Path, CheckExists)
@@ -53,11 +60,31 @@ return function(Container)
 
                 local SourceCode = ReadFile(CurrentFile, "include")
 
-                local Child = Container:CreateChild(CurrentFile, SourceCode)
+                return RunFile(Container, CurrentFile, SourceCode)
+        end
 
-                local Return = { Child:Process():Compile():Run() }
+        function ENV.include_static(path)
+                error("include_static requires a static string path, for example include_static(\"$RELATIVE/example.lua\")", 2)
+        end
 
-                return unpack(Return)
+        function ENV.require(path)
+                if type(path) ~= "string" or path == "" then
+                        error("include expected a non-empty path", 2)
+                end
+
+                local CurrentFile = ResolvePath(path, Container.CurrentFile, Container.BasePath)
+
+                if not RequireCache[CurrentFile] then
+                        local SourceCode = ReadFile(CurrentFile, "include")
+
+                        local Return = { RunFile(Container, CurrentFile, SourceCode) }
+
+                        RequireCache[CurrentFile] = Return
+
+                        return unpack(Return)
+                else
+                        return unpack(RequireCache[CurrentFile])
+                end
         end
 
         function ENV.builtin.CurrentContainer()

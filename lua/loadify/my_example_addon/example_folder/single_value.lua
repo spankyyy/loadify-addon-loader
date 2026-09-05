@@ -1,0 +1,3 @@
+AddCSLuaFile()
+
+return "one value"
